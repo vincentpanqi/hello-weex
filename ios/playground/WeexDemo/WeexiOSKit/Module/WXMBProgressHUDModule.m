@@ -35,10 +35,12 @@ WX_EXPORT_METHOD(@selector(hideHUD))
     NSString *cancelTitle = [self stringValue:param[@"cancelTitle"]];
     NSString *contentColor = [self stringValue:param[@"contentColor"]];
 
-    MBProgressHUDMode hudMode;
+    MBProgressHUDMode hudMode = MBProgressHUDModeIndeterminate;
     if ([mode isEqualToString:@"indicator"]) {
         hudMode  = MBProgressHUDModeIndeterminate;
-    }else  if ([mode isEqualToString:@"text"]) {
+    }
+    
+    if ([mode isEqualToString:@"text"]) {
         hudMode  = MBProgressHUDModeText;
     }
 

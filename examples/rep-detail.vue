@@ -2,7 +2,7 @@
   <div class="repDiv">
     <div class= "repHeader">
       <text class="item-homepage "> {{rep_name+'/'+rep_login}}</text>
-      <image style="width: 100;height: 100;margin-top:20;margin-right:20;margin-left:220" src={{rep_avatar_url}}></image>
+      <image style="width: 100;height: 100;margin-top:20;margin-right:20;margin-left:220" v-bind:src="rep_avatar_url"></image>
     </div>  
     <div class= "repCenter">
       <text class="item-homepage "> {{rep_created_at}}</text>

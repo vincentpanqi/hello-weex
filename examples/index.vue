@@ -1,6 +1,6 @@
 <template>
   <div style="flex-direction: column;">
-    <wxc-tabbar tab-items = {{tabItems}}></wxc-tabbar>
+    <wxc-tabbar v-bind:tab-items = "tabItems"></wxc-tabbar>
   </div>
 </template>
 

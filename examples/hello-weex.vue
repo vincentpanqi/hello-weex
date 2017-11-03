@@ -1,9 +1,9 @@
 <template>
   <div>
     <list class="list">
-      <cell onappear="onappear" ondisappear="ondisappear" class="row" repeat="{{rows}}" index="{{$index}}" onclick="onclickcell">
+      <cell onappear="onappear" ondisappear="ondisappear" class="row" v-bind:repeat="rows" v-bind:index="$index" onclick="onclickcell">
         <div class="item">
-          <text class="item-title">{{name}}</text>
+          <text class="item-title">{{title}}</text>
         </div>
       </cell>
     </list>
@@ -20,12 +20,14 @@
   }
   .item {
     justify-content: center;
-    border-bottom-width: 2px;
+    border-bottom-width: 1px;
     border-bottom-color: #c0c0c0;
-    height: 100px;
+    height: 140px;
     padding:20px;
   }
   .item-title {
+    font-size: 40px;
+    color: #437ABE;
   }
 </style>
 
@@ -43,31 +45,22 @@
     methods: {
       onappear: function (e) {
       },
-      ondisappear:function (e) { 
+      ondisappear:function (e) {
       },      
       onclickcell: function (e) {
         var index = e.target.attr.index;
         var storage = require('@weex-module/storage');
-        if (index === this.rows.length-1) {
-        }else{
-          storage.setItem('country',this.rows[index].name,function(e){
-          });
-        }
-        this.$openURL(this.baseURL+'city.js?countryIndex='+index);
+        this.$openURL(this.baseURL+this.rows[index].name+'.js');
       },
+
     },
     data: {
       baseURL: '',
       rows:[
-        {name: 'USA'},
-        {name: 'UK'},
-        {name: 'Germany'},
-        {name: 'China'},
-        {name: 'Canada'},
-        {name: 'India'},
-        {name: 'France'},
-        {name: 'Australia'},
-        {name: 'Other'}
+        {name: 'monkey-index',title:"weex app : monkey for github"},
+        {name: 'ioscomponent-example',title:"ios component"},
+        {name: 'iosmodule-example',title:"ios module"},
+        {name: 'webcomponent-example',title:"web component"}
       ]
     }
   }

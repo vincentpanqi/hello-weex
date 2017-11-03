@@ -1,20 +1,20 @@
 <template>
   <scroller>
     <wxc-panel title="actionSheet" type="primary">
-      <text onclick="{{actionSheet}}" >actionSheet</text>
+      <text @click="actionSheet" >actionSheet</text>
     </wxc-panel>
 
     <wxc-panel title="MBProgressHUD" type="primary">
-        <text onclick="{{toast}}" >MBProgressHUD</text>
+        <text @click="toast" >MBProgressHUD</text>
     </wxc-panel>
 
     <wxc-panel title="geolocation" type="primary">
-      <text onclick="{{geolocationAction}}" >geolocation</text>
+      <text @click="geolocationAction" >geolocation</text>
       <text style="margin-top:30">{{geolocationValue}}</text>
     </wxc-panel>
 
     <wxc-panel title="vibration" type="primary">
-      <text onclick="{{vibrate}}" >vibrate</text>
+      <text @click="vibrate" >vibrate</text>
     </wxc-panel>
   </scroller>
 </template>

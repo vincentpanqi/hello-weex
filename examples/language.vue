@@ -1,7 +1,7 @@
 <template>
   <div>
     <list class="list">
-      <cell onappear="onappear" ondisappear="ondisappear" class="row" repeat="{{rows}}" index="{{$index}}" onclick="onclickcell">
+      <cell onappear="onappear" ondisappear="ondisappear" class="row" :repeat="rows" :index="$index" onclick="onclickcell">
         <div class="item">
           <text class="item-title">{{name}}</text>
         </div>

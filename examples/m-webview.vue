@@ -8,7 +8,7 @@
             <wxc-button type="primary" size="small" value="refresh" onclick="refresh"
                     style="margin-left:30px;width:210px; margin-top:5px; margin-bottom:5px"></wxc-button>        
         </div>
-        <web class="content" id="webview" src={{user_blog}} onpagestart="startload" onpagefinish="finishload" onerror="failload"></web>
+        <web class="content" id="webview" :src="user_blog" onpagestart="startload" onpagefinish="finishload" onerror="failload"></web>
     </div>
 </template>
 

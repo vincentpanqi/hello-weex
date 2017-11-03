@@ -1,7 +1,7 @@
 <template>
   <div class="userDiv">
       <div class= "userHeader">
-      <image style="width: 120;height: 120;margin-top:20" src={{user_avatar_url}}></image>
+      <image style="width: 120;height: 120;margin-top:20" :src="user_avatar_url"></image>
       <text style=" background-color: red;margin-top:20">{{userdetail.created_at}}</text>
     </div>  
     <div class= "userRow">

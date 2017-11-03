@@ -8,19 +8,21 @@
       <text class="select-language" onclick="onclickRightItem">{{currentLanguage}}</text>
     </div>
     <list class="list">
-      <refresh class="refresh" display="{{displayRefresh}}" onrefresh="handleRefresh">
-        <div id="animation" onfocus="{{rotate}}" onload="{{rotate}}">
-          <image class="img-circle" onfocus="{{rotate}}" src="{{splashCircle}}" onclick="{{rotate}}" />
+
+      <refresh class="refresh" v-on:display="displayRefresh" onrefresh="handleRefresh">
+        <div id="animation" v-on:focus="rotate" v-on:onload="rotate">
+          <image class="img-circle" v-on:focus="rotate" :src="splashCircle" @click="rotate" />
         </div>
         <text style="margin-left:36px;color:rgb(238, 162, 54)">下拉刷新...</text>
       </refresh>
 
-      <cell onappear="onappear" ondisappear="ondisappear" onclick="onclickcell" class="row" repeat="{{(k , v) in rows}}" index="{{k}}">
-        <user-rank-item index="{{k}}" login="{{v.login}}" avatar_url="{{v.avatar_url}}"></user-rank-item>
+      <cell onappear="onappear" ondisappear="ondisappear" onclick="onclickcell" class="row" v-bind:repeat="(k , v) in rows" v-bind:index="k">
+        <!-- login事件 -->
+        <user-rank-item v-bind:index="k" v-bind:login="v.login" :avatar_url="v.avatar_url"></user-rank-item>
       </cell>
 
-      <loading class="loading-view" display="{{loadingDisplay}}" onloading="onloading">
-        <text class="loading-text" style="text-align: center; color:rgb(238, 162, 54)" if="{{(refreshDisplay==='hide' && rows.length > 0)}}">Load more</text>
+      <loading class="loading-view" v-on:display="loadingDisplay" onloading="onloading">
+        <text class="loading-text" style="text-align: center; color:rgb(238, 162, 54)" v-bind:if="(refreshDisplay==='hide' && rows.length > 0)">Load more</text>
         <loading-indicator class="indicator"></loading-indicator>
       </loading>
     </list>

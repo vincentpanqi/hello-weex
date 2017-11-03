@@ -2,7 +2,7 @@
 <template>
   <div class="wrapper">
     <text class="title">Hello</text>
-    <image src="{{logoUrl}}" class="logo"></image>
+    <image :src="logoUrl" class="logo"></image>
   </div>
 </template>
 

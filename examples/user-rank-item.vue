@@ -1,7 +1,7 @@
 <template>
   <div class="item">
     <text class="item-title" style= "margin-left:10;width:90;font-size: 40px ;text-overflow: ellipsis;text-align: center;align-items:center;padding-top:16">{{index+1}}</text>
-    <image style="width: 80;height: 80;justify-content:center;border-radius:10;" src={{avatar_url}}></image>
+    <image style="width: 80;height: 80;justify-content:center;border-radius:10;" :src="avatar_url"></image>
     <text class="item-title" style= "font-size: 40px;text-overflow:ellipsis;width:400;margin-left:30;margin-right:0;flex:1;padding-top:16">{{login}}</text>
   </div>
 </template>

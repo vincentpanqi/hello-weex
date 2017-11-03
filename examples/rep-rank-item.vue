@@ -2,7 +2,7 @@
   <div class="repItem">
     <div class = "titleDiv">
       <text class="item-title" style= "margin-left:10;width:90;font-size: 40px ;text-overflow: ellipsis;text-align: center;align-items:center;padding-top:16">{{index+1}}</text>
-      <image style="margin-left:10;width: 80;height: 80;justify-content:center;border-radius:10;" src={{avatar_url}}></image>
+      <image style="margin-left:10;width: 80;height: 80;justify-content:center;border-radius:10;" :src="avatar_url"></image>
     </div>
     <div class= "detailDiv">
       <div class="detailTitleItem">
