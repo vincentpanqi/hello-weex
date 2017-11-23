@@ -1,10 +1,21 @@
-//
-//  WXMonitor.m
-//  WeexSDK
-//
-//  Created by yinfeng on 16/7/27.
-//  Copyright © 2016年 taobao. All rights reserved.
-//
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
 #import "WXMonitor.h"
 #import "WXSDKEngine.h"
@@ -12,7 +23,11 @@
 #import "WXAppMonitorProtocol.h"
 #import "WXHandlerFactory.h"
 #import "WXLog.h"
+#import "WXUtility.h"
+#import "WXComponentManager.h"
 #import "WXThreadSafeMutableDictionary.h"
+#import "WXAppConfiguration.h"
+#import "WXTracingManager.h"
 
 NSString *const kStartKey = @"start";
 NSString *const kEndKey = @"end";
@@ -64,33 +79,72 @@ static WXThreadSafeMutableDictionary *globalPerformanceDict;
     performanceDict[@(tag)] = dict;
 }
 
++ (BOOL)performancePoint:(WXPerformanceTag)tag isRecordedWithInstance:(WXSDKInstance *)instance
+{
+    NSMutableDictionary *performanceDict = [self performanceDictForInstance:instance];
+    if (!performanceDict) {
+        return NO;
+    }
+    
+    NSMutableDictionary *dict = performanceDict[@(tag)];
+    return dict && dict[kStartKey] && dict[kEndKey];
+}
+
 + (void)performanceFinish:(WXSDKInstance *)instance
+{
+    NSMutableDictionary *commitDict = [NSMutableDictionary dictionaryWithCapacity:WXPTEnd+4];
+    
+    commitDict[BIZTYPE] = instance.bizType ?: @"";
+    commitDict[PAGENAME] = instance.pageName ?: @"";
+    
+    commitDict[WXSDKVERSION] = WX_SDK_VERSION;
+    commitDict[JSLIBVERSION] = [WXAppConfiguration JSFrameworkVersion];
+    if (instance.userInfo[@"weex_bundlejs_connectionType"]) {
+        commitDict[@"connectionType"] = instance.userInfo[@"weex_bundlejs_connectionType"];
+    }
+    if (instance.userInfo[@"weex_bundlejs_requestType"]) {
+        commitDict[@"requestType"] = instance.userInfo[@"weex_bundlejs_requestType"];
+    }
+    if (instance.userInfo[CACHEPROCESSTIME]) {
+        commitDict[CACHEPROCESSTIME] = instance.userInfo[CACHEPROCESSTIME];
+    }
+    
+    if (instance.userInfo[CACHERATIO]) {
+        commitDict[CACHERATIO] = instance.userInfo[CACHERATIO];
+    }
+    if (instance.userInfo[WXCUSTOMMONITORINFO]) {
+        if([instance.userInfo[WXCUSTOMMONITORINFO] isKindOfClass:[NSDictionary class]]) {
+            commitDict[WXCUSTOMMONITORINFO] = [WXUtility JSONString:instance.userInfo[WXCUSTOMMONITORINFO]];
+        }else if([instance.userInfo[WXCUSTOMMONITORINFO] isKindOfClass:[NSString class]]) {
+            commitDict[WXCUSTOMMONITORINFO] = instance.userInfo[WXCUSTOMMONITORINFO];
+        }
+    }
+    WXPerformBlockOnComponentThread(^{
+        commitDict[@"componentCount"] = @([instance numberOfComponents]);
+        WXPerformBlockOnMainThread(^{
+            [self commitPerformanceWithDict:commitDict instance:instance];
+        });
+    });
+}
+
++ (void)commitPerformanceWithDict:(NSMutableDictionary *)commitDict instance:(WXSDKInstance *)instance
 {
     static NSDictionary *commitKeyDict;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         // non-standard perf commit names, remove this hopefully.
         commitKeyDict = @{
-                              @(WXPTInitalize) : SDKINITTIME,
-                              @(WXPTInitalizeSync) : SDKINITINVOKETIME,
-                              @(WXPTFrameworkExecute) : JSLIBINITTIME,
-                              @(WXPTJSDownload) : NETWORKTIME,
-                              @(WXPTJSCreateInstance) : COMMUNICATETIME,
-                              @(WXPTFirstScreenRender) : SCREENRENDERTIME,
-                              @(WXPTAllRender) : TOTALTIME,
-                              @(WXPTBundleSize) : JSTEMPLATESIZE
-                              };
+                          @(WXPTInitalize) : SDKINITTIME,
+                          @(WXPTInitalizeSync) : SDKINITINVOKETIME,
+                          @(WXPTFrameworkExecute) : JSLIBINITTIME,
+                          @(WXPTJSDownload) : NETWORKTIME,
+                          @(WXPTJSCreateInstance) : COMMUNICATETIME,
+                          @(WXFirstScreenJSFExecuteTime) : FIRSETSCREENJSFEXECUTETIME,
+                          @(WXPTFirstScreenRender) : SCREENRENDERTIME,
+                          @(WXPTAllRender) : TOTALTIME,
+                          @(WXPTBundleSize) : JSTEMPLATESIZE
+                          };
     });
-    
-    NSMutableDictionary *commitDict = [NSMutableDictionary dictionaryWithCapacity:WXPTEnd+4];
-    
-    commitDict[BIZTYPE] = instance.bizType ?: @"";
-    commitDict[PAGENAME] = instance.pageName ?: @"";
-    commitDict[WXSDKVERSION] = WX_SDK_VERSION;
-    commitDict[JSLIBVERSION] = WX_JS_FRAMEWORK_VERSION;
-#if DEBUG
-    commitDict[@"componentCount"] = @([instance numberOfComponents]);
-#endif
     
     for (int tag = 0; tag < WXPTEnd; tag++) {
         NSMutableDictionary *performanceDict = tag <= WXPTFrameworkExecute ? globalPerformanceDict : instance.performanceDict;
@@ -111,12 +165,15 @@ static WXThreadSafeMutableDictionary *globalPerformanceDict;
         commitDict[commitKey] = @([end integerValue] - [start integerValue]);
     }
     
+    commitDict[@"instanceId"] = [instance instanceId]?:@"";
+    
     id<WXAppMonitorProtocol> appMonitor = [WXHandlerFactory handlerForProtocol:@protocol(WXAppMonitorProtocol)];
     if (appMonitor && [appMonitor respondsToSelector:@selector(commitAppMonitorArgs:)]){
         [appMonitor commitAppMonitorArgs:commitDict];
     }
     
     [self printPerformance:commitDict];
+    [WXTracingManager commitTracingSummaryInfo:commitDict withInstanceId:instance.instanceId];
 }
 
 + (NSMutableDictionary *)performanceDictForInstance:(WXSDKInstance *)instance

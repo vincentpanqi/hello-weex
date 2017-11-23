@@ -1,9 +1,20 @@
-/**
- * Created by Weex.
- * Copyright (c) 2016, Alibaba, Inc. All rights reserved.
- *
- * This source code is licensed under the Apache Licence 2.0.
- * For the full copyright and license information,please view the LICENSE file in the root directory of this source tree.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 #import "WXBaseViewController.h"
@@ -13,6 +24,8 @@
 #import "WXSDKEngine.h"
 #import "WXSDKManager.h"
 #import "WXUtility.h"
+#import "WXPrerenderManager.h"
+#import "WXMonitor.h"
 
 @interface WXBaseViewController ()
 
@@ -60,49 +73,26 @@
 }
 
 /**
- *  We assume that the initial state of viewController's navigitonBar is hidden.  By setting the attribute of
+ *  We assume that the initial state of viewController's navigtionBar is hidden.  By setting the attribute of
  *  'dataRole' equal to 'navbar', the navigationBar hidden will be NO.
  */
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    [self addEdgePop];
     self.view.backgroundColor = [UIColor whiteColor];
     self.automaticallyAdjustsScrollViewInsets = NO;
     [self _renderWithURL:_sourceURL];
-    
     if ([self.navigationController isKindOfClass:[WXRootViewController class]]) {
-        self.navigationController.navigationBarHidden = YES;
+        [self.navigationController setNavigationBarHidden:YES animated:YES];
     }
-}
 
-- (void)addEdgePop
-{
-    UIScreenEdgePanGestureRecognizer *edgePanGestureRecognizer = [[UIScreenEdgePanGestureRecognizer alloc] initWithTarget:self action:@selector(edgePanGesture:)];
-    edgePanGestureRecognizer.delegate = self;
-    edgePanGestureRecognizer.edges = UIRectEdgeLeft;
-    [self.view addGestureRecognizer:edgePanGestureRecognizer];
-}
-
-- (void)edgePanGesture:(UIScreenEdgePanGestureRecognizer*)edgePanGestureRecognizer
-{
-    [self.navigationController popViewControllerAnimated:YES];
-}
-
-#pragma mark- UIGestureRecognizerDelegate
-
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
-{
-    if (!self.navigationController || [self.navigationController.viewControllers count] == 1) {
-        return NO;
-    }
-    return YES;
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
     [self _updateInstanceState:WeexInstanceAppear];
+    
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -123,17 +113,27 @@
     [self _renderWithURL:_sourceURL];
 }
 
+
+- (void)addEdgePop
+{
+    self.navigationController.interactivePopGestureRecognizer.delegate = self;
+}
+
 - (void)_renderWithURL:(NSURL *)sourceURL
 {
     if (!sourceURL) {
         return;
     }
-
+    
     [_instance destroyInstance];
+    if([WXPrerenderManager isTaskReady:[self.sourceURL absoluteString]]){
+        _instance = [WXPrerenderManager instanceFromUrl:self.sourceURL.absoluteString];
+    }
+
     _instance = [[WXSDKInstance alloc] init];
     _instance.frame = CGRectMake(0.0f, 0.0f, self.view.bounds.size.width, self.view.bounds.size.height);
     _instance.pageObject = self;
-    _instance.pageName = [[WXUtility urlByDeletingParameters:sourceURL] absoluteString];
+    _instance.pageName = sourceURL.absoluteString;
     _instance.viewController = self;
     
     NSString *newURL = nil;
@@ -143,7 +143,7 @@
     } else {
         newURL = [NSString stringWithFormat:@"%@?random=%d", sourceURL.absoluteString, arc4random()];
     }
-    [_instance renderWithURL:[NSURL URLWithString:newURL] options:@{@"bundleUrl":sourceURL} data:nil];
+    [_instance renderWithURL:[NSURL URLWithString:newURL] options:@{@"bundleUrl":sourceURL.absoluteString} data:nil];
     
     __weak typeof(self) weakSelf = self;
     _instance.onCreate = ^(UIView *view) {
@@ -159,6 +159,15 @@
     _instance.renderFinish = ^(UIView *view) {
         [weakSelf _updateInstanceState:WeexInstanceAppear];
     };
+    
+    if([WXPrerenderManager isTaskReady:[self.sourceURL absoluteString]]){
+        WX_MONITOR_INSTANCE_PERF_START(WXPTJSDownload, _instance);
+        WX_MONITOR_INSTANCE_PERF_END(WXPTJSDownload, _instance);
+        WX_MONITOR_INSTANCE_PERF_START(WXPTFirstScreenRender, _instance);
+        WX_MONITOR_INSTANCE_PERF_START(WXPTAllRender, _instance);
+        [WXPrerenderManager renderFromCache:[self.sourceURL absoluteString]];
+        return;
+    }
 }
 
 - (void)_updateInstanceState:(WXState)state
@@ -174,11 +183,11 @@
     }
 }
 
-- (void)_appStateDidChange:(NSNotification *)nofity
+- (void)_appStateDidChange:(NSNotification *)notify
 {
-    if ([nofity.name isEqualToString:@"UIApplicationDidBecomeActiveNotification"]) {
+    if ([notify.name isEqualToString:@"UIApplicationDidBecomeActiveNotification"]) {
         [self _updateInstanceState:WeexInstanceForeground];
-    } else if([nofity.name isEqualToString:@"UIApplicationDidEnterBackgroundNotification"]) {
+    } else if([notify.name isEqualToString:@"UIApplicationDidEnterBackgroundNotification"]) {
         [self _updateInstanceState:WeexInstanceBackground]; ;
     }
 }

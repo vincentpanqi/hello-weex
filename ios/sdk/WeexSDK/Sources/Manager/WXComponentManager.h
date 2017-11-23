@@ -1,16 +1,39 @@
-/**
- * Created by Weex.
- * Copyright (c) 2016, Alibaba, Inc. All rights reserved.
- *
- * This source code is licensed under the Apache Licence 2.0.
- * For the full copyright and license information,please view the LICENSE file in the root directory of this source tree.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
+#import <CoreGraphics/CoreGraphics.h>
+#import <Foundation/Foundation.h>
+
+@class WXBridgeMethod;
 @class WXSDKInstance;
 @class WXComponent;
 
-extern void WXPerformBlockOnComponentThread(void (^block)());
-
+#ifdef __cplusplus
+extern "C" {
+#endif
+    
+void WXPerformBlockOnComponentThread(void (^block)());
+void WXPerformBlockSyncOnComponentThread(void (^block)());
+    
+#ifdef __cplusplus
+}
+#endif
 
 @interface WXComponentManager : NSObject
 
@@ -33,7 +56,7 @@ extern void WXPerformBlockOnComponentThread(void (^block)());
 - (void)startComponentTasks;
 
 /**
- * @abstract tell the component mananger that instance root view's frame has been changed
+ * @abstract tell the component manager that instance root view's frame has been changed
  **/
 - (void)rootViewFrameDidChange:(CGRect)frame;
 
@@ -62,15 +85,21 @@ extern void WXPerformBlockOnComponentThread(void (^block)());
 - (void)moveComponent:(NSString *)ref toSuper:(NSString *)superRef atIndex:(NSInteger)index;
 
 /**
- * @abstract return component for specific ref
+ * @abstract return component for specific ref, must be called on component thread by calling WXPerformBlockOnComponentThread
  */
 - (WXComponent *)componentForRef:(NSString *)ref;
 
 /**
- * @abstract number of components created
+ * @abstract return root component
+ */
+- (WXComponent *)componentForRoot;
+
+/**
+ * @abstract number of components created, must be called on component thread by calling WXPerformBlockOnComponentThread
  */
 - (NSUInteger)numberOfComponents;
 
+- (void)addComponent:(WXComponent *)component toIndexDictForRef:(NSString *)ref;
 
 ///--------------------------------------
 /// @name Updating
@@ -80,6 +109,16 @@ extern void WXPerformBlockOnComponentThread(void (^block)());
  * @abstract update styles
  **/
 - (void)updateStyles:(NSDictionary *)styles forComponent:(NSString *)ref;
+
+///--------------------------------------
+/// @name Updating pseudo class
+///--------------------------------------
+
+/**
+ * @abstract update  pseudo class styles
+ **/
+
+- (void)updatePseudoClassStyles:(NSDictionary *)styles forComponent:(NSString *)ref;
 
 /**
  * @abstract update attributes
@@ -100,7 +139,6 @@ extern void WXPerformBlockOnComponentThread(void (^block)());
  * @abstract scroll to specific component
  **/
 - (void)scrollToComponent:(NSString *)ref options:(NSDictionary *)options;
-
 
 ///--------------------------------------
 /// @name Life Cycle
@@ -126,6 +164,10 @@ extern void WXPerformBlockOnComponentThread(void (^block)());
  **/
 - (void)unload;
 
+/**
+ * @abstract invalidate component management, this can be called on main thread.
+ **/
+- (void)invalidate;
 
 ///--------------------------------------
 /// @name Fixed
@@ -134,18 +176,26 @@ extern void WXPerformBlockOnComponentThread(void (^block)());
 /**
  *  @abstract add a component which has a fixed position
  *
- *  @param component
+ *  @param fixComponent the fixed component to add
  */
 - (void)addFixedComponent:(WXComponent *)fixComponent;
 
 /**
  *  @abstract remove a component which has a fixed position
  *
- *  @param component
+ *  @param fixComponent the fixed component to remove
  */
 - (void)removeFixedComponent:(WXComponent *)fixComponent;
 
 - (void)_addUITask:(void (^)())block;
 
+- (void)excutePrerenderUITask:(NSString *)url;
 
+/**
+ * @param styles a NSDictionary value, styles which will resolve
+ * @param component a WXComponent value, the target which you want to resolve
+ * @param isUpdateStyles a BOOL value, YES will udpate the component style property, NO will notifiy the lifeStyle of compoenent to handle, default value is NO.
+ * @abstract handleStyle will be add to a queue to be executed every frame, but handleStyleOnMainThread will switch to main thread and execute imediately, you can call this for your execution time sequence.
+ */
+- (void)handleStyleOnMainThread:(NSDictionary*)styles forComponent:(WXComponent *)component isUpdateStyles:(BOOL)isUpdateStyles;
 @end

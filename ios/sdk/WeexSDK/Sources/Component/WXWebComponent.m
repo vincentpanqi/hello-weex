@@ -1,14 +1,29 @@
-/**
- * Created by Weex.
- * Copyright (c) 2016, Alibaba, Inc. All rights reserved.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * This source code is licensed under the Apache Licence 2.0.
- * For the full copyright and license information,please view the LICENSE file in the root directory of this source tree.
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 #import "WXWebComponent.h"
 #import "WXComponent_internal.h"
 #import "WXUtility.h"
+#import "WXHandlerFactory.h"
+#import "WXURLRewriteProtocol.h"
+#import "WXSDKEngine.h"
+
 #import <JavaScriptCore/JavaScriptCore.h>
 
 @interface WXWebView : UIWebView
@@ -20,7 +35,7 @@
 - (void)dealloc
 {
     if (self) {
-        self.delegate = nil;
+//        self.delegate = nil;
     }
 }
 
@@ -46,6 +61,10 @@
 
 @implementation WXWebComponent
 
+WX_EXPORT_METHOD(@selector(goBack))
+WX_EXPORT_METHOD(@selector(reload))
+WX_EXPORT_METHOD(@selector(goForward))
+
 - (instancetype)initWithRef:(NSString *)ref type:(NSString *)type styles:(NSDictionary *)styles attributes:(NSDictionary *)attributes events:(NSArray *)events weexInstance:(WXSDKInstance *)weexInstance
 {
     if (self = [super initWithRef:ref type:type styles:styles attributes:attributes events:events weexInstance:weexInstance]) {
@@ -64,6 +83,9 @@
     _webview = (WXWebView *)self.view;
     _webview.delegate = self;
     _webview.allowsInlineMediaPlayback = YES;
+    _webview.scalesPageToFit = YES;
+    [_webview setBackgroundColor:[UIColor clearColor]];
+    _webview.opaque = NO;
     _jsContext = [_webview valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
     __weak typeof(self) weakSelf = self;
     _jsContext[@"$notifyWeex"] = ^(JSValue *data) {
@@ -99,9 +121,14 @@
 
 - (void)setUrl:(NSString *)url
 {
-    if (![url isEqualToString:_url]) {
-        _url = url;
-        
+    NSString* newURL = [url copy];
+    WX_REWRITE_URL(url, WXResourceTypeLink, self.weexInstance)
+    if (!newURL) {
+        return;
+    }
+    
+    if (![newURL isEqualToString:_url]) {
+        _url = newURL;
         if (_url) {
             [self loadURL:_url];
         }
@@ -173,6 +200,9 @@
         NSMutableDictionary *data = [self baseInfo];
         [data setObject:[error localizedDescription] forKey:@"errorMsg"];
         [data setObject:[NSString stringWithFormat:@"%ld", (long)error.code] forKey:@"errorCode"];
+        if(error.userInfo && ![error.userInfo[NSURLErrorFailingURLStringErrorKey] hasPrefix:@"http"]){
+            return;
+        }
         [self fireEvent:@"error" params:data];
     }
 }

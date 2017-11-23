@@ -1,12 +1,27 @@
-/**
- * Created by Weex.
- * Copyright (c) 2016, Alibaba, Inc. All rights reserved.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * This source code is licensed under the Apache Licence 2.0.
- * For the full copyright and license information,please view the LICENSE file in the root directory of this source tree.
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 #import "WXVideoComponent.h"
+#import "WXHandlerFactory.h"
+#import "WXURLRewriteProtocol.h"
+#import "WXSDKEngine.h"
+
 #import <AVFoundation/AVPlayer.h>
 #import <AVKit/AVPlayerViewController.h>
 #import <MediaPlayer/MPMoviePlayerViewController.h>
@@ -25,6 +40,7 @@
 
 @property (nonatomic, strong) UIViewController* playerViewController;
 @property (nonatomic, strong) AVPlayerItem* playerItem;
+@property (nonatomic, strong) WXSDKInstance* weexSDKInstance;
 
 @end
 
@@ -33,7 +49,7 @@
 - (id)init
 {
     if (self = [super init]) {
-        if ([self greater8SysVer]){
+        if ([self greater8SysVer]) {
             _playerViewController = [AVPlayerViewController new];
             
         } else {
@@ -75,7 +91,8 @@
 
 - (void)dealloc
 {
-    if ([self greater8SysVer]){
+    _weexSDKInstance = nil;
+    if ([self greater8SysVer]) {
         AVPlayerViewController *AVVC = (AVPlayerViewController*)_playerViewController;
         [AVVC.player removeObserver:self forKeyPath:@"rate"];
         [_playerItem removeObserver:self forKeyPath:@"status"];
@@ -134,7 +151,14 @@
 
 - (void)setURL:(NSURL *)URL
 {
-    if ([self greater8SysVer]){
+    NSString *newURL = [URL.absoluteString copy];
+    WX_REWRITE_URL(URL.absoluteString, WXResourceTypeVideo, self.weexSDKInstance)
+    
+    if (!newURL) {
+        return;
+    }
+    NSURL *videoNewURL = [NSURL URLWithString:newURL];
+    if ([self greater8SysVer]) {
         
         AVPlayerViewController *AVVC = (AVPlayerViewController*)_playerViewController;
         if (AVVC.player && _playerItem) {
@@ -142,7 +166,7 @@
             [AVVC.player removeObserver:self forKeyPath:@"rate"];
             [[NSNotificationCenter defaultCenter] removeObserver:self name:AVPlayerItemDidPlayToEndTimeNotification object: _playerItem];
         }
-        _playerItem = [[AVPlayerItem alloc] initWithURL:URL];
+        _playerItem = [[AVPlayerItem alloc] initWithURL:videoNewURL];
         AVPlayer *player = [AVPlayer playerWithPlayerItem: _playerItem];
         AVVC.player = player;
         
@@ -160,7 +184,7 @@
     }
     else {
         MPMoviePlayerViewController *MPVC = (MPMoviePlayerViewController*)_playerViewController;
-        [MPVC moviePlayer].contentURL = URL;
+        [MPVC moviePlayer].contentURL = videoNewURL;
     }
 }
 
@@ -191,7 +215,7 @@
 
 - (void)pause
 {
-    if ([self greater8SysVer]){
+    if ([self greater8SysVer]) {
         AVPlayerViewController *AVVC = (AVPlayerViewController*)_playerViewController;
         [[AVVC player] pause];
     } else {
@@ -204,7 +228,7 @@
 
 @interface WXVideoComponent()
 
-@property (nonatomic, strong) WXVideoView *videoView;
+@property (nonatomic, weak) WXVideoView *videoView;
 @property (nonatomic, strong) NSURL *videoURL;
 @property (nonatomic) BOOL autoPlay;
 @property (nonatomic) BOOL playStatus;
@@ -234,7 +258,10 @@
 
 -(UIView *)loadView
 {
-    return [[WXVideoView alloc] init];
+    WXVideoView* videoView = [[WXVideoView alloc] init];
+    videoView.weexSDKInstance = self.weexInstance;
+    
+    return videoView;
 }
 
 -(void)viewDidLoad

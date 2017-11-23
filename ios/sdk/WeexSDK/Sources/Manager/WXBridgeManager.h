@@ -1,15 +1,28 @@
-/**
- * Created by Weex.
- * Copyright (c) 2016, Alibaba, Inc. All rights reserved.
- *
- * This source code is licensed under the Apache Licence 2.0.
- * For the full copyright and license information,please view the LICENSE file in the root directory of this source tree.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * 
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 #import <Foundation/Foundation.h>
 
 @class WXBridgeMethod;
 @class WXSDKInstance;
+
+extern void WXPerformBlockOnBridgeThread(void (^block)());
 
 @interface WXBridgeManager : NSObject
 
@@ -21,7 +34,7 @@
 /**
  *  Create Instance Method
  *  @param instance  :   instance id
- *  @param template  :   template data
+ *  @param temp  :   template data
  *  @param options   :   parameters
  *  @param data      :   external data
  **/
@@ -31,10 +44,20 @@
                   data:(id)data;
 
 /**
+ * @abstract return currentInstanceId
+ **/
+- (NSArray *)getInstanceIdStack;
+
+/**
  *  Destroy Instance Method
  *  @param instance  :   instance id
  **/
 - (void)destroyInstance:(NSString *)instance;
+
+/**
+ * Trigger full GC, for dev and debug only.
+ **/
+- (void)forceGarbageCollection;
 
 /**
  *  Refresh Instance Method
@@ -49,12 +72,11 @@
 - (void)unload;
 
 /**
- *  Update Instacne State Method
+ *  Update Instance State Method
  *  @param instance  :   instance id
  *  @param data      :   parameters
  **/
-- (void)updateState:(NSString *)instance
-               data:(id)data;
+- (void)updateState:(NSString *)instance data:(id)data;
 
 /**
  *  Execute JSFramework Script
@@ -63,10 +85,28 @@
 - (void)executeJsFramework:(NSString *)script;
 
 /**
- *  Execute JS Method
- *  @param method    :   object of bridge method
+ *  Register JS service Script
+ *  @param name      :   service name
+ *  @param serviceScript    :   script code
+ *  @param options   :   service options
  **/
-- (void)executeJsMethod:(WXBridgeMethod *)method;
+- (void)registerService:(NSString *)name withService:(NSString *)serviceScript withOptions:(NSDictionary *)options;
+
+
+/**
+ *  Register JS service Script
+ *  @param name         :   service name
+ *  @param serviceScriptUrl    :   script url
+ *  @param options      :   service options
+ **/
+
+-(void)registerService:(NSString *)name withServiceUrl:(NSURL *)serviceScriptUrl withOptions:(NSDictionary *)options;
+
+/**
+ *  Unregister JS service Script
+ *  @param name    :   script code
+ **/
+- (void)unregisterService:(NSString *)name;
 
 /**
  *  Register Modules Method
@@ -76,21 +116,30 @@
 
 /**
  *  Register Components Method
- *  @param components:   component list
+ *  @param components   component list
  **/
 - (void)registerComponents:(NSArray* )components;
 
-- (void)fireEvent:(NSString *)instanceId ref:(NSString *)ref type:(NSString *)type params:(NSDictionary *)params DEPRECATED_MSG_ATTRIBUTE("Use fireEvent:ref:type:params:domChanges: method instead.");
+/**
+ *  FireEvent
+ *  @param instanceId   instance id
+ *  @param ref       :   node reference
+ *  @param type      :   event type
+ *  @param params    :   parameters in event object
+ *  @param domChanges   dom value changes, used for two-way data binding
+ **/
+- (void)fireEvent:(NSString *)instanceId ref:(NSString *)ref type:(NSString *)type params:(NSDictionary *)params domChanges:(NSDictionary *)domChanges;
 
 /**
  *  FireEvent
- *  @param instanceId:   instance id
+ *  @param instanceId   instance id
  *  @param ref       :   node reference
  *  @param type      :   event type
- *  @param params    :   parameters
- *  @param domChanges:   dom value changes, used for two-way data binding
+ *  @param params    :   parameters in event object
+ *  @param domChanges   dom value changes, used for two-way data binding
+ *  @param handlerArguments : arguments passed to event handler
  **/
-- (void)fireEvent:(NSString *)instanceId ref:(NSString *)ref type:(NSString *)type params:(NSDictionary *)params domChanges:(NSDictionary *)domChanges;
+- (void)fireEvent:(NSString *)instanceId ref:(NSString *)ref type:(NSString *)type params:(NSDictionary *)params domChanges:(NSDictionary *)domChanges handlerArguments:(NSArray *)handlerArguments;
 
 /**
  *  callBack
@@ -98,7 +147,7 @@
  *  @param instanceId instanceId
  *  @param funcId     funcId
  *  @param params     params
- *  @param iflast     indicate that whether this func will be reused
+ *  @param keepAlive     indicate that whether this func will be reused
  */
 - (void)callBack:(NSString *)instanceId funcId:(NSString *)funcId params:(id)params keepAlive:(BOOL)keepAlive;
 
@@ -110,7 +159,7 @@
 
 /**
  *  CallBack
- *  @param instanceId:   instance id
+ *  @param instanceId   instance id
  *  @param funcId    :   callback id
  *  @param params    :   parameters
  **/
@@ -124,7 +173,7 @@
 
 /**
  *  Log To WebSocket
- *  @param flag      :   the tag to indentify
+ *  @param flag      :   the tag to identify
  *  @param message   :   message to output
  **/
 - (void)logToWebSocket:(NSString *)flag message:(NSString *)message;
@@ -133,5 +182,8 @@
  *  Reset Environment
  **/
 - (void)resetEnvironment;
+
+- (void)fireEvent:(NSString *)instanceId ref:(NSString *)ref type:(NSString *)type params:(NSDictionary *)params DEPRECATED_MSG_ATTRIBUTE("Use fireEvent:ref:type:params:domChanges: method instead.");
+- (void)executeJsMethod:(WXBridgeMethod *)method DEPRECATED_MSG_ATTRIBUTE();
 
 @end

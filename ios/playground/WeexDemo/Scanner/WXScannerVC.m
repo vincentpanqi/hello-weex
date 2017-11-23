@@ -155,7 +155,7 @@
 {
     if ([url.scheme isEqualToString:@"ws"]) {
         [WXSDKEngine connectDebugServer:url.absoluteString];
-        [WXSDKEngine initSDKEnviroment];
+        [WXSDKEngine initSDKEnvironment];
         
         return YES;
     }
